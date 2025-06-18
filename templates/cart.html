@@ -5,18 +5,24 @@
 {% if products %}
 <table border="1" cellpadding="10">
   <tr>
-    <th>Product</th>
-    <th>Qty</th>
-    <th>Price</th>
+    <th>product image</th>
+    <th>name</th>
+    <th>qty</th>
+    <th>price</th>
     <th>Total</th>
   </tr>
   {% for product in products %}
-  <tr>
-     <td><img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" width="80"></td>
+  <tr data-id="{{ product.id }}">
+    
+     <td><img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" width="80"><br><button class="delete-btn">🗑️ Delete</button></td>
     <td>{{ product.name }}</td>
-    <td>{{ product.quantity }}</td>
-    <td>₹{{ product.price }}</td>
-    <td>₹{{ product.total_price }}</td>
+     <td>
+    <button class="qty-btn decrease">-</button>
+    <span class="qty">{{ product.quantity }}</span>
+    <button class="qty-btn increase">+</button>
+  </td>
+<td>₹<span class="price">{{ product.price }}</span></td>
+<td>₹<span class="total">{{ product.total_price }}</span></td>
   </tr>
   {% endfor %}
 </table>
@@ -25,4 +31,87 @@
 {% else %}
 <p>Your cart is empty.</p>
 {% endif %}
+
+
+
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+// Quantity Update
+document.querySelectorAll('.qty-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const row = this.closest('tr');
+    const productId = row.dataset.id;
+    const qtySpan = row.querySelector('.qty');
+    let quantity = parseInt(qtySpan.textContent);
+    const price = parseFloat(row.querySelector('.price').textContent);
+    const totalCell = row.querySelector('.total');
+
+    if (this.classList.contains('increase')) {
+      quantity++;
+    } else if (this.classList.contains('decrease') && quantity > 1) {
+      quantity--;
+    }
+
+    // Update quantity in UI
+    qtySpan.textContent = quantity;
+    totalCell.textContent = (price * quantity).toFixed(2);
+
+    // Send updated quantity to server
+    fetch(`/cart/update/${productId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ quantity: quantity })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.new_total !== undefined) {
+        document.querySelector('h3').innerHTML = `Grand Total: ₹${data.new_total}`;
+      }
+    });
+  });
+});
+
+// Delete Product
+document.querySelectorAll('.delete-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const row = this.closest('tr');
+    const productId = row.dataset.id;
+
+    fetch(`/cart/delete/${productId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        row.remove(); // Remove row from DOM
+        document.querySelector('h3').innerHTML = `Grand Total: ₹${data.new_total}`;
+
+        // If cart is empty
+        if (data.new_total === 0) {
+          const table = document.querySelector('table');
+          const grandTotal = document.querySelector('h3');
+          const checkoutBtn = document.querySelector('a[href="/checkout"]');
+
+          if (table) table.remove();
+          if (grandTotal) grandTotal.remove();
+          if (checkoutBtn) checkoutBtn.remove();
+
+          const emptyMsg = document.createElement('p');
+          emptyMsg.textContent = "Your cart is empty.";
+          document.querySelector('body').appendChild(emptyMsg);
+        }
+      }
+    });
+  });
+});
+</script>
+
 {% endblock %}

@@ -10,6 +10,12 @@
   <nav>
     <a href="/products">Products</a> | 
     <a href="/cart">View Cart</a>
+    {% if session.get('user_id') %}
+    <a href="/logout">Logout</a>
+  {% else %}
+    <a href="/login">Login</a> | 
+    <a href="/register">Register</a>
+  {% endif %}
   </nav>
   <hr>
   {% with messages = get_flashed_messages() %}

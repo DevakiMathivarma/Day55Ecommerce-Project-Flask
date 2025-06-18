@@ -14,7 +14,7 @@
   {% endfor %}
 </div>
 
-<script>
+<!-- <script>
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 function addToCart(productId) {
@@ -34,5 +34,39 @@ function addToCart(productId) {
     console.error(err);
   });
 }
+</script> -->
+
+<script>
+document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+  button.addEventListener('click', () => {
+    const productId = button.getAttribute('data-id');
+
+    fetch(`/cart/add/${productId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': "{{ csrf_token() }}"
+      }
+    })
+    .then(res => {
+      if (res.status === 401) {
+        alert("Please login to add items to your cart.");
+        window.location.href = "/login";
+      } else {
+        return res.json();
+      }
+    })
+    .then(data => {
+      if (data?.message) {
+        alert(data.message);
+      }
+    })
+    .catch(err => {
+      alert("Error adding to cart");
+      console.error(err);
+    });
+  });
+});
 </script>
+
 {% endblock %}
